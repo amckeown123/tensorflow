@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "xla/hlo/analysis/alias_info.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <tuple>
@@ -22,7 +23,9 @@ limitations under the License.
 #include <vector>
 
 #include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "xla/hlo/analysis/hlo_operand_index.h"
 #include "xla/hlo/ir/hlo_casting_utils.h"
 #include "xla/hlo/ir/hlo_instruction.h"
@@ -40,6 +43,8 @@ namespace xla {
 std::vector<std::pair<HloOperandIndex, ShapeIndex>>
 AliasInfo::GetFusionInstructionInPlaceInputOutputPairs(
     const HloFusionInstruction* fusion) const {
+  VLOG(1) << absl::StrCat(
+      "AliasInfo::GetFusionInstructionInPlaceInputOutputPairs", fusion->name());
   std::vector<std::pair<HloOperandIndex, ShapeIndex>>
       in_place_input_output_pairs;
 
@@ -122,6 +127,10 @@ bool AliasInfo::MustAlias(const HloInstruction* operand,
                           const ShapeIndex& operand_index,
                           const HloInstruction* user,
                           const ShapeIndex& user_index) const {
+  VLOG(1) << absl::StrCat("AliasInfo::MustAlias on user ", user->name(),
+                          " operand ", operand->name(), " operand_index ",
+                          operand_index.ToString(), " user_index ",
+                          user_index.ToString());
   for (const auto& [hlo_operand_index, user_shape_index] :
        GetInPlaceInputOutputPairs(user)) {
     if (user->operand(hlo_operand_index.operand_number) == operand &&
@@ -135,6 +144,9 @@ bool AliasInfo::MustAlias(const HloInstruction* operand,
 
 std::vector<std::pair<HloOperandIndex, ShapeIndex>>
 AliasInfo::GetInPlaceInputOutputPairs(const HloInstruction* user) const {
+  VLOG(1) << absl::StrCat("AliasInfo::GetInPlaceInputOutputPairs on user ",
+                          user->name());
+
   if (std::optional<std::vector<std::pair<HloOperandIndex, ShapeIndex>>> hint =
           GetNonDefaultInPlaceInputOutputPairs(user)) {
     return *hint;
@@ -256,6 +268,91 @@ AliasInfo::GetInPlaceInputOutputPairs(const HloInstruction* user) const {
     }
     return in_place_pairs;
   }
+  if (user->opcode() == HloOpcode::kAsyncUpdate) {
+    const Shape& shape = user->shape();
+    CHECK(shape.IsTuple());
+    CHECK_GE(shape.tuple_shapes().size(), 2);
+    const HloInstruction* operand0 = user->operand(0);
+    const Shape& operand0_shape = operand0->shape();
+    CHECK(operand0_shape.IsTuple());
+    CHECK_GE(operand0_shape.tuple_shapes().size(), 2);
+
+    std::vector<std::pair<HloOperandIndex, ShapeIndex>> in_place_pairs;
+    // AsyncUpdate/AsyncDone always alias their chain operand if shapes match.
+    // Index {0} is the context/chain.
+    auto prev_param_shape = operand0_shape.tuple_shapes(0);
+    int64_t num_prev_params = prev_param_shape.tuple_shapes().size();
+    auto curr_param_shape = shape.tuple_shapes(0);
+    int64_t num_curr_params = curr_param_shape.tuple_shapes().size();
+
+    // 1. Alias prefix of the input subshape:
+    //   {0, i} of the first oprand -> output {0, i}
+    for (int64_t i = 0; i < std::min(num_prev_params, num_curr_params); ++i) {
+      ShapeUtil::ForEachLeafShape(
+          curr_param_shape.tuple_shapes(i),
+          [&](const Shape& subshape, const ShapeIndex& index) {
+            ShapeIndex full_index = {0, i};
+            full_index.insert(full_index.end(), index.begin(), index.end());
+            in_place_pairs.push_back(
+                {HloOperandIndex{0, full_index}, full_index});
+          });
+    }
+
+    // 2. Alias newly bound operands i -> output {0, i}
+    for (int64_t i = num_prev_params; i < num_curr_params; ++i) {
+      int64_t operand_idx = i - num_prev_params + 1;
+      if (operand_idx < user->operand_count()) {
+        ShapeUtil::ForEachLeafShape(
+            user->operand(operand_idx)->shape(),
+            [&](const Shape& subshape, const ShapeIndex& index) {
+              ShapeIndex full_output_index = {0, i};
+              full_output_index.insert(full_output_index.end(), index.begin(),
+                                       index.end());
+              in_place_pairs.push_back(
+                  {HloOperandIndex{operand_idx, index}, full_output_index});
+            });
+      }
+    }
+
+    // 3. Alias prefix of output subshape
+    // the output subshape can be a tensor or tupe
+    const Shape& prev_output_shape = operand0_shape.tuple_shapes(1);
+    const Shape& curr_output_shape = shape.tuple_shapes(1);
+
+    if (prev_output_shape.IsTuple() && curr_output_shape.IsTuple()) {
+      int64_t num_prev_outputs = prev_output_shape.tuple_shapes().size();
+      int64_t num_curr_outputs = curr_output_shape.tuple_shapes().size();
+      for (int64_t i = 0; i < std::min(num_prev_outputs, num_curr_outputs);
+           ++i) {
+        ShapeUtil::ForEachLeafShape(
+            curr_output_shape.tuple_shapes(i),
+            [&](const Shape& subshape, const ShapeIndex& index) {
+              ShapeIndex full_index = {1, i};
+              full_index.insert(full_index.end(), index.begin(), index.end());
+              in_place_pairs.push_back(
+                  {HloOperandIndex{0, full_index}, full_index});
+            });
+      }
+    } else if (!prev_output_shape.IsTuple() && !curr_output_shape.IsTuple()) {
+      if (ShapeUtil::Equal(prev_output_shape, curr_output_shape)) {
+        ShapeUtil::ForEachLeafShape(
+            curr_output_shape,
+            [&](const Shape& subshape, const ShapeIndex& index) {
+              ShapeIndex full_index = {1};
+              full_index.insert(full_index.end(), index.begin(), index.end());
+              in_place_pairs.push_back(
+                  {HloOperandIndex{0, full_index}, full_index});
+            });
+      }
+    }
+
+    return in_place_pairs;
+  }
+  // if (user->opcode() == HloOpcode::kAsyncDone) {
+  //   std::vector<std::pair<HloOperandIndex, ShapeIndex>> in_place_pairs;
+  //   in_place_pairs.push_back({HloOperandIndex{0, {1}}, {}});
+  //   return in_place_pairs;
+  // }
   if (user->opcode() == HloOpcode::kSetDimensionSize) {
     int64_t dimension = user->dimension();
     std::vector<std::pair<HloOperandIndex, ShapeIndex>> in_place_pairs;
@@ -273,6 +370,9 @@ AliasInfo::GetInPlaceInputOutputPairs(const HloInstruction* user) const {
 
 std::pair<const HloInstruction*, ShapeIndex> FollowTupleIndirection(
     const HloInstruction* instruction, ShapeIndex operand_index) {
+  VLOG(1) << absl::StrCat("FollowTupleIndirection on instruction ",
+                          instruction->name(), " operand_index ",
+                          operand_index.ToString());
   while (instruction->opcode() == HloOpcode::kTuple && !operand_index.empty()) {
     instruction = instruction->operand(operand_index.front());
     operand_index.pop_front();
