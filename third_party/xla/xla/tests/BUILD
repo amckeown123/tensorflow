@@ -7,6 +7,7 @@ load(
     "if_rocm_is_configured",
 )
 load("//xla:package_groups.bzl", "xla_test_friend_package_group")
+load("//xla:pytype.bzl", "pytype_strict_library")
 load("//xla:xla.default.bzl", "tests_build_defs_bzl_deps", "xla_cc_test", "xla_internal")
 load("//xla/tests:build_defs.bzl", "generate_backend_suites", "xla_test")
 load("//xla/tsl:tsl.bzl", "if_google", "if_oss", "internal_visibility")
@@ -41,7 +42,6 @@ cc_library(
     srcs = ["xla_internal_test_main.cc"],
     deps = [
         "//xla:debug_options_flags",
-        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",
         "@tsl//tsl/platform:logging",
         "@tsl//tsl/platform:test",
@@ -191,60 +191,6 @@ cc_library(
         "//xla/pjrt/interpreter:interpreter_client",
     ],
     alwayslink = True,
-)
-
-cc_library(
-    name = "hlo_test_base_legacy",
-    testonly = True,
-    srcs = ["hlo_test_base_legacy.cc"],
-    hdrs = ["hlo_test_base_legacy.h"],
-    deps = [
-        ":hlo_runner_agnostic_reference_mixin",
-        ":hlo_runner_agnostic_test_base",
-        ":pjrt_client_registry",
-        "//xla:error_spec",
-        "//xla:literal",
-        "//xla:shape_util",
-        "//xla:util",
-        "//xla:xla_data_proto_cc",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/service:backend",
-        "//xla/service:compiler",
-        "//xla/service:computation_placer_hdr",
-        "//xla/service:hlo_module_util",
-        "//xla/service:hlo_runner_interface",
-        "//xla/service:hlo_runner_legacy",
-        "//xla/service:interpreter_plugin",  # reference backend
-        "//xla/service:platform_util",
-        "//xla/stream_executor:device_address_allocator",
-        "//xla/stream_executor:platform",
-        "//xla/stream_executor:stream_executor_address_allocator",
-        "//xla/tsl/lib/core:status_test_util",
-        "//xla/tsl/platform:statusor",
-        "//xla/tsl/platform:test",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:nullability",
-        "@com_google_absl//absl/functional:function_ref",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:string_view",
-    ],
-)
-
-cc_library(
-    name = "hlo_test_base",
-    testonly = True,
-    hdrs = ["hlo_test_base.h"],
-    deps = [
-        ":hlo_test_base_legacy",
-        "//xla:util",
-        "//xla/service:hlo_runner",
-        "//xla/service:hlo_runner_legacy",
-        "//xla/stream_executor:platform",
-        "@com_google_absl//absl/base:core_headers",
-    ],
 )
 
 cc_library(
@@ -447,26 +393,6 @@ cc_library(
         "//xla/hlo/builder:xla_computation",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "llvm_irgen_test_base",
-    testonly = True,
-    srcs = ["llvm_irgen_test_base.cc"],
-    hdrs = ["llvm_irgen_test_base.h"],
-    deps = [
-        ":hlo_test_base_legacy",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/service:executable",
-        "//xla/service:llvm_compiler",
-        "//xla/service/llvm_ir:llvm_util",
-        "//xla/tsl/lib/core:status_test_util",
-        "//xla/tsl/platform:statusor",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@tsl//tsl/platform:test",
     ],
 )
 
@@ -2669,13 +2595,11 @@ xla_test(
         ":hlo_pjrt_test_base",
         ":literal_test_util",
         ":pjrt_client_registry",
-        ":test_utils",
         ":xla_internal_test_main",
         "//xla:literal",
         "//xla:literal_util",
         "//xla:shape_util",
         "//xla:types",
-        "//xla/hlo/testlib:verified_hlo_module",
         "//xla/service:computation_placer",
         "//xla/service:hlo_module_config",
         "//xla/service:hlo_runner_interface",
@@ -2862,32 +2786,6 @@ xla_test(
         "//xla/tsl/platform:statusor",
         "//xla/tsl/platform:test",
         "@com_google_absl//absl/log",
-    ],
-)
-
-xla_test(
-    name = "llvm_compiler_test",
-    srcs = ["llvm_compiler_test.cc"],
-    backends = [
-        "cpu",
-        "gpu",
-    ],
-    tags = ["pjrt_migration_candidate"],
-    use_legacy_runtime = True,
-    deps = [
-        ":hlo_test_base",
-        "//xla:literal_util",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:test_helpers",
-        "//xla/service:backend",
-        "//xla/service:llvm_compiler",
-        "//xla/stream_executor:device_description",
-        "//xla/stream_executor:stream_executor_h",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-        "@llvm-project//llvm:Core",
-        "@tsl//tsl/platform:casts",
-        "@tsl//tsl/platform:test",
     ],
 )
 
@@ -3118,7 +3016,6 @@ xla_cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@tsl//tsl/platform:path",
-        "@tsl//tsl/platform:test",
     ],
 )
 
@@ -3579,5 +3476,15 @@ xla_test(
         "//xla/hlo/ir:hlo",
         "//xla/hlo/testlib:test",
         "//xla/tsl/platform:statusor",
+    ],
+)
+
+pytype_strict_library(
+    name = "generate_complex_unary_op_samples",
+    srcs = ["generate_complex_unary_op_samples.py"],
+    deps = [
+        "//third_party/py/jax/_src:test_util",
+        "//third_party/py/mpmath",
+        "//third_party/py/numpy",
     ],
 )

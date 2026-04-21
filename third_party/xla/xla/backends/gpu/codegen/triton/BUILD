@@ -1,7 +1,6 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//xla:xla.default.bzl", "xla_cc_test")
 load("//xla/tests:build_defs.bzl", "xla_test")
-load("//xla/tsl:tsl.bzl", "if_google")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -299,123 +298,6 @@ cc_library(
         "@stablehlo//:stablehlo_ops",
         "@triton//:TritonDialects",
         "@triton//:TritonTransforms",
-        "@tsl//tsl/platform:path",
-    ],
-)
-
-xla_test(
-    name = "triton_gemm_fusion_test",
-    srcs = ["triton_gemm_fusion_test.cc"],
-    backends = [
-        "a100",
-        "h100",
-        "b200",
-        "amdgpu_any",
-    ],
-    tags = ["no_mac"],
-    use_legacy_runtime = True,
-    deps = [
-        ":test_utils",
-        ":xtile_compiler",
-        "//xla:autotuning_proto_cc",
-        "//xla:error_spec",
-        "//xla:xla_data_proto_cc",
-        "//xla:xla_proto_cc",
-        "//xla/backends/gpu/tests:gpu_codegen_test",
-        "//xla/backends/gpu/transforms:convert_triton_gemm_config",
-        "//xla/backends/gpu/transforms:hoist_fused_bitcasts",
-        "//xla/hlo/analysis:symbolic_map",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/hlo/testlib:pattern_matcher_gmock",
-        "//xla/hlo/testlib:verified_hlo_module",
-        "//xla/hlo/utils:hlo_query",
-        "//xla/service:pattern_matcher",
-        "//xla/service/gpu:backend_configs_cc",
-        "//xla/service/gpu:gpu_device_info_for_tests",
-        "//xla/service/gpu:target_constants",
-        "//xla/service/gpu/model:block_level_parameters",
-        "//xla/stream_executor:device_description",
-        "//xla/stream_executor/cuda:cuda_compute_capability",
-        "//xla/tests:xla_internal_test_main",  # fixdeps: keep
-        "//xla/tsl/lib/core:status_test_util",
-        "//xla/tsl/platform:env",
-        "//xla/tsl/platform:errors",
-        "//xla/tsl/platform:statusor",
-        "//xla/tsl/platform:test",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest",
-        "@llvm-project//llvm:TargetParser",
-        "@llvm-project//llvm:ir_headers",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Pass",
-        "@tsl//tsl/platform:path",
-    ],
-)
-
-xla_test(
-    name = "dot_algorithms_test",
-    srcs = ["dot_algorithms_test.cc"],
-    backend_args = if_google(
-        {
-            "b200": ["--heap_check="],
-            "a100": ["--heap_check="],
-            "h100": ["--heap_check="],
-        },
-        {},
-    ),
-    backends = [
-        "a100",
-        "h100",
-        "b200",
-        "amdgpu_any",
-    ],
-    env = {
-        "CUBLAS_EMULATE_SINGLE_PRECISION": "1",  # Trigger single precision emulation (F32_F32_F32) with BF16x9 cublas algorithm. It was introduced in cublas 12.9.
-        "CUBLAS_EMULATION_STRATEGY": "performant",  # Trigger single precision emulation (F32_F32_F32) with BF16x9 cublas algorithm. It was introduced in cublas 12.9.
-    },
-    shard_count = 30,
-    tags = ["no_mac"],
-    use_legacy_runtime = True,
-    deps = [
-        ":test_utils",
-        "//xla:autotuning_proto_cc",
-        "//xla:error_spec",
-        "//xla:literal",
-        "//xla:literal_util",
-        "//xla:xla_data_proto_cc",
-        "//xla:xla_proto_cc",
-        "//xla/backends/gpu/profiler:kernel_name_tracer",
-        "//xla/backends/gpu/tests:gpu_codegen_test",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/hlo/testlib:verified_hlo_module",
-        "//xla/service:dump",
-        "//xla/service:hlo_module_config",
-        "//xla/service/gpu:backend_configs_cc",
-        "//xla/service/gpu:ir_emission_utils",
-        "//xla/stream_executor:device_description",
-        "//xla/stream_executor/cuda:cuda_compute_capability",
-        "//xla/tests:test_utils",
-        "//xla/tests:xla_internal_test_main",  # fixdeps: keep
-        "//xla/tsl/lib/core:status_test_util",
-        "//xla/tsl/platform:errors",
-        "//xla/tsl/platform:statusor",
-        "@com_google_absl//absl/algorithm:container",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest",
-        "@llvm-project//llvm:Support",
         "@tsl//tsl/platform:path",
     ],
 )

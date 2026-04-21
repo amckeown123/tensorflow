@@ -37,6 +37,11 @@ def xla_package_groups(name = "xla_package_groups"):
         packages = ["//..."],
     )
 
+    native.package_group(
+        name = "restricted",
+        packages = ["//..."],
+    )
+
 def xla_test_friend_package_group(name):
     """Defines visibility group for XLA tests.
 

@@ -1,7 +1,5 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//xla:xla.default.bzl", "xla_cc_test")
-load("//xla/tests:build_defs.bzl", "xla_test")
-load("//xla/tsl:tsl.bzl", "if_google")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
@@ -80,48 +78,6 @@ cc_library(
     ],
 )
 
-xla_test(
-    name = "cudnn_test",
-    srcs = ["cudnn_test.cc"],
-    backends = ["gpu"],
-    tags = ["cuda-only"],
-    use_legacy_runtime = True,
-    deps = [
-        "//xla:comparison_util",
-        "//xla:debug_options_flags",
-        "//xla:error_spec",
-        "//xla:shape_util",
-        "//xla:xla_data_proto_cc",
-        "//xla:xla_proto_cc",
-        "//xla/backends/autotuner:backends_proto_cc",
-        "//xla/backends/gpu/tests:gpu_codegen_test",
-        "//xla/backends/gpu/transforms:cudnn_fusion_compiler",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/hlo/testlib:pattern_matcher_gmock",
-        "//xla/hlo/testlib:verified_hlo_module",
-        "//xla/service:dump",
-        "//xla/service:hlo_module_config",
-        "//xla/service:pattern_matcher",
-        "//xla/service/gpu:cudnn_support_utils",
-        "//xla/service/gpu:ir_emission_utils",
-        "//xla/service/gpu:stream_executor_util",
-        "//xla/stream_executor:device_description",
-        "//xla/stream_executor:dnn",
-        "//xla/stream_executor:stream_executor_h",
-        "//xla/stream_executor/cuda:cuda_compute_capability",
-        "//xla/tsl/platform:env",
-        "//xla/tsl/platform:errors",
-        "//xla/tsl/platform:statusor",
-        "//xla/tsl/platform:test",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
-        "@tsl//tsl/platform:path",
-    ],
-)
-
 cc_library(
     name = "custom",
     srcs = ["custom.cc"],
@@ -185,77 +141,6 @@ cc_library(
         "@llvm-project//mlir:AsmParser",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:Support",
-    ],
-)
-
-xla_test(
-    name = "dynamic_slice_fusion_test",
-    srcs = ["dynamic_slice_fusion_test.cc"],
-    # TODO(b/467915739): Remove heap_check= once the bug is fixed.
-    backend_args = if_google(
-        {
-            "gpu": ["--heap_check="],
-            "b200": ["--heap_check="],
-            "a100": ["--heap_check="],
-            "h100": ["--heap_check="],
-        },
-        {},
-    ),
-    backend_tags = {
-        "h100": [
-            "full",
-            "multi_gpu",
-            #"no_oss",
-        ],
-        "gpu": [
-            "multi_gpu",
-            #"no_oss",
-        ],
-        "b200": [
-            "multi_gpu",
-            #"no_oss",
-        ],
-    },
-    backends = ["gpu"],
-    use_legacy_runtime = True,
-    deps = [
-        "//xla:error_spec",
-        "//xla:shape_util",
-        "//xla:xla_data_proto_cc",
-        "//xla:xla_proto_cc",
-        "//xla/backends/gpu:ffi",
-        "//xla/backends/gpu/runtime:async_thunk",
-        "//xla/backends/gpu/runtime:dynamic_slice_thunk",
-        "//xla/backends/gpu/runtime:thunk",
-        "//xla/backends/gpu/runtime:thunk_executor",
-        "//xla/backends/gpu/runtime:while_thunk",
-        "//xla/backends/gpu/transforms:dynamic_slice_fusion_rewriter",
-        "//xla/ffi",
-        "//xla/hlo/builder:xla_builder",
-        "//xla/hlo/builder/lib:constants",
-        "//xla/hlo/ir:hlo",
-        "//xla/hlo/testlib:filecheck",
-        "//xla/service:executable",
-        "//xla/service:hlo_module_config",
-        "//xla/service:hlo_proto_cc",
-        "//xla/service:hlo_runner_interface",
-        "//xla/service:platform_util",
-        "//xla/service/gpu:gpu_executable",
-        "//xla/service/gpu:ir_emission_utils",
-        "//xla/stream_executor:device_address",
-        "//xla/stream_executor:platform_manager",
-        "//xla/stream_executor:semantic_version",
-        "//xla/stream_executor:stream",
-        "//xla/stream_executor:stream_executor_h",
-        "//xla/tests:hlo_test_base_legacy",
-        "//xla/tsl/platform:errors",
-        "//xla/tsl/platform:statusor",
-        "//xla/tsl/platform:test",
-        "@com_google_absl//absl/algorithm:container",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
