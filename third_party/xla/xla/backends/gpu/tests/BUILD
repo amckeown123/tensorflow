@@ -60,6 +60,7 @@ cc_library(
         "//xla/service:executable",
         "//xla/service:gpu_plugin",
         "//xla/service:hlo_module_config",
+        "//xla/service/gpu:gpu_compiler",
         "//xla/service/gpu:gpu_executable",
         "//xla/stream_executor:platform_manager",
         "//xla/tests:llvm_irgen_test_base",

@@ -210,7 +210,7 @@ ENTRY test_computation {
     kinds.push_back(thunk->kind());
   }
   // The collective is sync (single device), so no AsyncStart/Done wrapping.
-  EXPECT_THAT(kinds, ElementsAre(Kind::kReplicaId, Kind::kKernel,
+  EXPECT_THAT(kinds, ElementsAre(Kind::kReplicaId, Kind::kCustomKernel,
                                  Kind::kCollectiveBroadcast));
 }
 
