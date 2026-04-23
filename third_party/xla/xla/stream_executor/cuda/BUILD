@@ -16,14 +16,7 @@ load(
     "tf_additional_cudnn_plugin_copts",
 )
 load("//xla/tests:build_defs.bzl", "xla_test")
-load(
-    "//xla/tsl:tsl.bzl",
-    "if_google",
-    "if_nccl",
-    "if_windows",
-    "internal_visibility",
-    "tsl_copts",
-)
+load("//xla/tsl:tsl.bzl", "if_google", "if_nccl", "if_windows", "internal_visibility", "tsl_copts")
 load(
     "//xla/tsl:tsl.default.bzl",
     "if_cuda_tools",

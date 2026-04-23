@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for pip package builder."""
+
 import os
 import shutil
 import sys
@@ -54,8 +55,8 @@ def replace_inplace(directory, search, to_replace) -> None:
 def copy_file(
     src_file: str,
     dst_dir: str,
-    strip: str = None,
-    dest_file: str = None,
+    strip: str | None = None,
+    dest_file: str | None = None,
 ) -> None:
   """Copy a file to the destination directory.
 

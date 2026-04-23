@@ -141,7 +141,11 @@ tf_cc_binary(
         "@llvm-project//mlir:Pass",
         "@llvm-project//mlir:ToLLVMIRTranslation",
         "@xla//xla/service/llvm_ir:llvm_command_line_options",
-    ] + if_llvm_aarch32_available([
+    ] + if_cuda_is_configured([
+        "@local_config_cuda//cuda:cuda_headers",
+        "@xla//xla/stream_executor/cuda:cublas_plugin",
+        "@local_config_cuda//cuda:cuda_runtime",
+    ]) + if_llvm_aarch32_available([
         "@llvm-project//llvm:ARMCodeGen",  # fixdeps: keep
     ]) + if_llvm_aarch64_available([
         "@llvm-project//llvm:AArch64CodeGen",  # fixdeps: keep

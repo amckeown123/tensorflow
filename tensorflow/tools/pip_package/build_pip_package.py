@@ -32,11 +32,25 @@ import subprocess
 import sys
 import tempfile
 
-from tensorflow.tools.pip_package.utils.utils import copy_file
-from tensorflow.tools.pip_package.utils.utils import create_init_files
-from tensorflow.tools.pip_package.utils.utils import is_macos
-from tensorflow.tools.pip_package.utils.utils import is_windows
-from tensorflow.tools.pip_package.utils.utils import replace_inplace
+try:
+  from .utils.utils import copy_file  # pylint: disable=g-import-not-at-top
+  from .utils.utils import create_init_files  # pylint: disable=g-import-not-at-top
+  from .utils.utils import is_macos  # pylint: disable=g-import-not-at-top
+  from .utils.utils import is_windows  # pylint: disable=g-import-not-at-top
+  from .utils.utils import replace_inplace  # pylint: disable=g-import-not-at-top
+except (ImportError, ValueError):
+  try:
+    from tensorflow.tools.pip_package.utils.utils import copy_file  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from tensorflow.tools.pip_package.utils.utils import create_init_files  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from tensorflow.tools.pip_package.utils.utils import is_macos  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from tensorflow.tools.pip_package.utils.utils import is_windows  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from tensorflow.tools.pip_package.utils.utils import replace_inplace  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  except ImportError:
+    from utils.utils import copy_file  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from utils.utils import create_init_files  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from utils.utils import is_macos  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from utils.utils import is_windows  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from utils.utils import replace_inplace  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 def get_repo_path(repo_name: str) -> str:
@@ -129,7 +143,6 @@ def prepare_headers(headers: list[str], srcs_dir: str) -> None:
       "cuda_nvcc/_virtual_includes",
       "cuda_nvjitlink/_virtual_includes",
       "cuda_nvml/_virtual_includes",
-      "cuda_nvrtc/_virtual_includes",
       "cuda_nvtx/_virtual_includes",
       get_repo_path("pypi"),
       get_repo_path("jsoncpp_git") + "src",
@@ -437,7 +450,7 @@ def build_wheel(
     cwd: str,
     project_name: str,
     platform: str,
-    collab: str = False,
+    collab: str = "False",
 ) -> None:
   """Build the wheel in the target directory.
 

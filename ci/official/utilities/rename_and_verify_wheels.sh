@@ -36,7 +36,15 @@ fi
 
 # Repair wheels with auditwheel and delete the old one.
 if [[ "$TFCI_WHL_AUDIT_ENABLE" == "1" ]]; then
-  python3 -m auditwheel repair --plat "$TFCI_WHL_AUDIT_PLAT" --wheel-dir . *.whl
+  EXCLUDE_FLAGS=""
+  if [[ "$TFCI_BAZEL_COMMON_ARGS" =~ "cuda13_version" ]]; then
+    if [[ -d /root/.cache/bazel ]]; then
+      for f in $(find /root/.cache/bazel \( -path "*cuda*" -o -path "*nvidia*" -o -path "*nccl*" -o -path "*nvshmem*" \) -name "*.so.*" | xargs -n1 basename | sort -u); do
+        EXCLUDE_FLAGS="$EXCLUDE_FLAGS --exclude $f"
+      done
+    fi
+  fi
+  python3 -m auditwheel repair --plat "$TFCI_WHL_AUDIT_PLAT" --wheel-dir . $EXCLUDE_FLAGS *.whl
   # if the wheel is already named correctly, auditwheel won't rename it. so we
   # list all .whl files by their modification time (ls -t) and delete anything
   # other than the most recently-modified one (the new one).
@@ -75,6 +83,18 @@ if [[ "$TFCI_WHL_NUMPY_VERSION" == 1 ]]; then
     "$python" -m pip install numpy==1.26.0
   fi
 fi
+# Prior to assessment testing, expose the local hermetic CUDA shared libraries.
+# This is necessary because automatic installation of extras like [and-cuda]
+# resolves to public PyPI packages that still map to CUDA 12 (as CUDA 13 
+# distributions are not published to PyPI yet during early staging).
+if [[ "$TFCI_BAZEL_COMMON_ARGS" =~ "cuda13_version" ]]; then
+  if [[ -d /root/.cache/bazel ]]; then
+    mkdir -p /tmp/test_cuda_libs
+    find /root/.cache/bazel \( -path "*cuda*" -o -path "*nvidia*" -o -path "*nccl*" -o -path "*nvshmem*" \) -name "*.so.*" -exec ln -sf {} /tmp/test_cuda_libs/ \; 2>/dev/null || true
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/tmp/test_cuda_libs"
+  fi
+fi
+
 if [[ "$TFCI_BAZEL_COMMON_ARGS" =~ gpu|cuda ]]; then
   echo "Checking to make sure tensorflow[and-cuda] is installable..."
   "$python" -m pip install "$(echo *.whl)[and-cuda]" $TFCI_PYTHON_VERIFY_PIP_INSTALL_ARGS
