@@ -43,6 +43,10 @@ following new APIs:
 import ast
 import io
 import os
+import sys
+import unittest
+
+import pasta
 
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import test as test_lib
@@ -198,6 +202,33 @@ class TestAstEdits(test_util.TensorFlowTestCase):
     text = "f(a, b, c, d)\n"
     _, new_text = self._upgrade(ast_edits.NoUpdateSpec(), text)
     self.assertEqual(new_text, text)
+
+  def testGooglePastaRoundTripModuleDocstringAndImport(self):
+    text = '"""Tests for tf upgrader."""\n\nimport io\n'
+    self.assertEqual(pasta.dump(pasta.parse(text)), text)
+
+  def testGooglePastaRoundTripConstants(self):
+    text = (
+        "x = tf.concat(0, [x for x in y])\n"
+        "y = b'bytes'\n"
+        "z = (True, False, None, ...)\n"
+    )
+    self.assertEqual(pasta.dump(pasta.parse(text)), text)
+
+  @unittest.skipIf(
+      sys.version_info >= (3, 14), "Pasta is not Python 3.14-ready."
+  )
+  def testGooglePastaRoundTripIndentedImport(self):
+    text = (
+        "\n"
+        "try:\n"
+        "  import tensorflow as tf  # import line\n"
+        "\n"
+        "  tf.ones([4, 5])\n"
+        "except AttributeError:\n"
+        "  pass\n"
+    )
+    self.assertEqual(pasta.dump(pasta.parse(text)), text)
 
   def testKeywordRename(self):
     """Test that we get the expected result if renaming kw2 to kw3."""
@@ -584,6 +615,9 @@ from bar import a, c"""
     _, new_text = self._upgrade(RenameImports(), text)
     self.assertEqual(expected_text, new_text)
 
+  @unittest.skipIf(
+      sys.version_info >= (3, 14), "Pasta is not Python 3.14-ready."
+  )
   def testImportInsideFunction(self):
     text = """
 def t():

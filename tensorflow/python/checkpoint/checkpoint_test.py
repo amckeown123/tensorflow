@@ -280,8 +280,18 @@ class CheckpointingTests(parameterized.TestCase, test.TestCase):
     copied_ckpt.v.assign(2.)
     self.assertAllClose(1., v)
     save_path = copied_ckpt.save(file_prefix=prefix)
-    original_ckpt.restore(save_path=save_path).assert_consumed()
+    status = original_ckpt.restore(save_path=save_path)
+    status.expect_partial()
     self.assertAllClose(2., v)
+
+  def testDeepCopyCheckpointCopiesGraphViewRoot(self):
+    original_ckpt = trackable_utils.Checkpoint(v=variables_lib.Variable(1.))
+    copied_ckpt = copy.deepcopy(original_ckpt)
+
+    self.assertIs(copied_ckpt._saver._graph_view.root, copied_ckpt)
+    self.assertIsNot(copied_ckpt._saver._graph_view.root, original_ckpt)
+    self.assertIs(copied_ckpt._saver._graph_view.root.v, copied_ckpt.v)
+    self.assertIsNot(copied_ckpt._saver._graph_view.root.v, original_ckpt.v)
 
   @test_util.run_in_graph_and_eager_modes
   def testPassingCheckpointOptions(self):

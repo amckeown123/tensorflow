@@ -18,8 +18,6 @@ import abc
 import typing
 import warnings
 
-import typing_extensions
-
 from tensorflow.core.protobuf import struct_pb2
 from tensorflow.python.framework import composite_tensor
 from tensorflow.python.framework import dtypes
@@ -39,6 +37,7 @@ from tensorflow.python.util import nest
 from tensorflow.python.util import tf_decorator
 from tensorflow.python.util import tf_inspect
 from tensorflow.python.util.tf_export import tf_export
+import typing_extensions
 
 # Attribute used to keep track of when we're inside a user-defined constructor
 # (in which case the fields of `self` may be modified).
@@ -196,7 +195,19 @@ class ExtensionType(
       # missing import), then the constructor will raise an exception.
       type_hints = {}
       for base in reversed(cls.__mro__):
-        type_hints.update(base.__dict__.get('__annotations__', {}))
+        if hasattr(typing_extensions, 'get_annotations'):
+          get_annotations_kwargs = {'eval_str': False}
+          if hasattr(typing_extensions, 'Format'):
+            get_annotations_kwargs['format'] = (
+                typing_extensions.Format.FORWARDREF
+            )
+          type_hints.update(
+              typing_extensions.get_annotations(
+                  base, **get_annotations_kwargs
+              )
+          )
+        else:
+          type_hints.update(getattr(base, '__annotations__', {}))
       ok_to_cache = False
 
     fields = []

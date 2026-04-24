@@ -47,17 +47,28 @@ class ObjectGraphView(trackable_view.TrackableView):
 
   def __deepcopy__(self, memo):
     # By default, weak references are not copied, which leads to surprising
-    # deepcopy behavior. To fix, we first we copy the object itself, then we
-    # make a weak reference to the copy.
+    # deepcopy behavior. To fix, we copy the strong root object first, then
+    # explicitly reconnect _root_ref to that copy instead of relying on
+    # copy.deepcopy(weakref.ref(...)), which may return the original weakref.
     strong_root = self._root_ref()
+    strong_copy = None
     if strong_root is not None:
       strong_copy = copy.deepcopy(strong_root, memo)
-      memo[id(self._root_ref)] = weakref.ref(strong_copy)
     # super() does not have a __deepcopy__, so we need to re-implement it
     copied = super().__new__(type(self))
     memo[id(self)] = copied
     for key, value in vars(self).items():
-      setattr(copied, key, copy.deepcopy(value, memo))
+      if key == "_root_ref":
+        if isinstance(value, weakref.ref):
+          setattr(
+              copied,
+              key,
+              weakref.ref(strong_copy) if strong_copy is not None else value,
+          )
+        else:
+          setattr(copied, key, strong_copy)
+      else:
+        setattr(copied, key, copy.deepcopy(value, memo))
     return copied
 
   def list_children(self, obj, save_type=base.SaveType.CHECKPOINT, **kwargs):

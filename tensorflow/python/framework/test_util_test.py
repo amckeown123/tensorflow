@@ -25,9 +25,9 @@ import unittest
 import weakref
 
 from absl.testing import parameterized
+from google.protobuf import text_format
 import numpy as np
 
-from google.protobuf import text_format
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.protobuf import meta_graph_pb2
 from tensorflow.python import pywrap_sanitizers
@@ -353,7 +353,9 @@ class TestUtilTest(test_util.TensorFlowTestCase, parameterized.TestCase):
     t.start()
     with self.assertRaises(self.failureException) as fe:
       t.join()
-    self.assertTrue("integer division or modulo by zero" in str(fe.exception))
+    self.assertRegex(
+        str(fe.exception), r"division(?: or modulo)? by zero"
+    )
 
   @test_util.run_in_graph_and_eager_modes
   def testCheckedThreadWithWrongAssertionFails(self):
@@ -366,7 +368,7 @@ class TestUtilTest(test_util.TensorFlowTestCase, parameterized.TestCase):
     t.start()
     with self.assertRaises(self.failureException) as fe:
       t.join()
-    self.assertTrue("False is not true" in str(fe.exception))
+    self.assertIn("False is not true", str(fe.exception))
 
   @test_util.run_in_graph_and_eager_modes
   def testMultipleThreadsWithOneFailure(self):
