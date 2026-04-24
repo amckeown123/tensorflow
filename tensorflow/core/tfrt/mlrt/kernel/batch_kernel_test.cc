@@ -26,6 +26,8 @@ limitations under the License.
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "absl/synchronization/notification.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "absl/types/span.h"
 #include "xla/tsl/lib/core/status_test_util.h"
 #include "tensorflow/core/framework/allocator.h"
@@ -279,6 +281,15 @@ TEST(KernelTest, BatchFunctionOp) {
       &resource_array, /*user_intra_op_threadpool=*/nullptr,
       /*model_metadata=*/std::nullopt,
       &fallback_state->process_function_library_runtime());
+
+  // Set cancellation fields for realistic request state. It is not observable
+  // here because BatchTask is created and consumed within the opaque kernel
+  // execution path.
+  fallback_request_state.set_rpc_deadline_for_batching(absl::Now() +
+                                                       absl::Seconds(1));
+  bool cancelled = false;
+  fallback_request_state.set_is_rpc_cancelled(
+      [&cancelled]() { return cancelled; });
 
   tfrt::ResourceContext resource_context;
 

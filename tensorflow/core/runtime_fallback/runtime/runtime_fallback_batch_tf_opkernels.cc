@@ -114,7 +114,24 @@ class FallbackBatchResource : public tensorflow::serving::BatchResourceBase {
       OpKernelContext* context) {
     const tfrt::ExecutionContext* exec_ctx = nullptr;
     TF_RETURN_IF_ERROR(GetTfrtExecutionContext(context, &exec_ctx));
-    return {std::make_unique<FallbackBatchTask>(*exec_ctx)};
+
+    auto task = std::make_unique<FallbackBatchTask>(*exec_ctx);
+    if (exec_ctx->request_ctx()) {
+      const auto* fallback_request_state =
+          exec_ctx->request_ctx()
+              ->GetDataIfExists<tfd::KernelFallbackCompatRequestState>();
+      if (fallback_request_state) {
+        if (auto deadline =
+                fallback_request_state->rpc_deadline_for_batching()) {
+          task->rpc_deadline = *deadline;
+        }
+        if (const auto& cb = fallback_request_state->is_rpc_cancelled()) {
+          task->is_rpc_cancelled = cb;
+        }
+      }
+    }
+
+    return {std::move(task)};
   }
 
   static absl::string_view GetBatchFunctionName(

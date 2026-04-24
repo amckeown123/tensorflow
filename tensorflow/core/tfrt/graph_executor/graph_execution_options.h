@@ -144,6 +144,12 @@ struct GraphExecutionRunOptions {
   // The optional name for debugging purposes. If empty, the runtime will pick a
   // name e.g. the joined string of input names and output names.
   std::string name;
+
+  // RPC deadline for lazy cancellation filtering in the batch scheduler.
+  std::optional<absl::Time> rpc_deadline_for_batching;
+
+  // Callback to check if the RPC has been cancelled by the client.
+  std::function<bool()> is_rpc_cancelled;
 };
 
 // Creates the default `SessionOptions` from a `GraphExecutionOptions`.

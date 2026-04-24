@@ -287,6 +287,13 @@ absl::StatusOr<std::unique_ptr<RequestInfo>> CreateRequestInfo(
   fallback_request_state.set_runtime_config(&options.runtime_config);
   fallback_request_state.set_cancellation_manager(
       &request_info->cancellation_manager);
+  if (run_options.rpc_deadline_for_batching.has_value()) {
+    fallback_request_state.set_rpc_deadline_for_batching(
+        *run_options.rpc_deadline_for_batching);
+  }
+  if (run_options.is_rpc_cancelled) {
+    fallback_request_state.set_is_rpc_cancelled(run_options.is_rpc_cancelled);
+  }
 
   // Set priority in the builder.
   tfrt::RequestOptions request_options;

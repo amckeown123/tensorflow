@@ -174,7 +174,18 @@ class MlrtBatchResource : public tensorflow::serving::BatchResourceBase {
   // local is used to pass the context.
   static absl::StatusOr<std::unique_ptr<BatchTask>> CreateBatchTask(
       OpKernelContext*) {
-    return {std::make_unique<MlrtBatchTask>(GetBatchFunctionMlrtContext())};
+    auto task = std::make_unique<MlrtBatchTask>(GetBatchFunctionMlrtContext());
+    if (auto* mlrt_ctx = GetBatchFunctionMlrtContext()) {
+      const auto& tf_context = mlrt_ctx->GetUserContext<Context>();
+      const auto& fallback_request_state = tf_context.fallback_request_state();
+      if (auto deadline = fallback_request_state.rpc_deadline_for_batching()) {
+        task->rpc_deadline = *deadline;
+      }
+      if (const auto& cb = fallback_request_state.is_rpc_cancelled()) {
+        task->is_rpc_cancelled = cb;
+      }
+    }
+    return {std::move(task)};
   }
 
   // This can only be called in Compute() and ComputeAsync() because thread

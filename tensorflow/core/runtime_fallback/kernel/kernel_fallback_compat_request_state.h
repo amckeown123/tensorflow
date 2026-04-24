@@ -181,6 +181,20 @@ class KernelFallbackCompatRequestState {
     return runtime_config_;
   }
 
+  void set_rpc_deadline_for_batching(absl::Time deadline) {
+    rpc_deadline_for_batching_ = deadline;
+  }
+  std::optional<absl::Time> rpc_deadline_for_batching() const {
+    return rpc_deadline_for_batching_;
+  }
+
+  void set_is_rpc_cancelled(std::function<bool()> callback) {
+    is_rpc_cancelled_ = std::move(callback);
+  }
+  const std::function<bool()>& is_rpc_cancelled() const {
+    return is_rpc_cancelled_;
+  }
+
  private:
   int64_t step_id_ = 0;
   // Below are resources needed by current tensorflow.
@@ -223,6 +237,8 @@ class KernelFallbackCompatRequestState {
   tfrt::ResourceContext* client_graph_resource_context_ = nullptr;
 
   const tensorflow::tfrt_stub::RuntimeConfig* runtime_config_ = nullptr;
+  std::optional<absl::Time> rpc_deadline_for_batching_;
+  std::function<bool()> is_rpc_cancelled_;
 };
 
 // Set up fallback context with common tensorflow states such as devices,
