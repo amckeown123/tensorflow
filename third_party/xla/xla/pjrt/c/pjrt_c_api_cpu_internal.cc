@@ -79,8 +79,8 @@ PJRT_Error* PJRT_ExecuteContext_Create(PJRT_ExecuteContext_Create_Args* args) {
 
 PJRT_Error* PJRT_CpuDeviceTopology_Create(
     PJRT_TopologyDescription_Create_Args* args) {
-  return new PJRT_Error{
-      absl::UnimplementedError("Topology not supported for CPU compilation.")};
+  return StatusToPjRtError(
+      absl::UnimplementedError("Topology not supported for CPU compilation."));
 }
 
 const PJRT_Api* GetCpuPjrtApi() {

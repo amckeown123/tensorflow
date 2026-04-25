@@ -63,8 +63,8 @@ static PJRT_Error* PJRT_FFI_UserData_Add(PJRT_FFI_UserData_Add_Args* args) {
       args->struct_size));
 
   if (args->context == nullptr) {
-    return new PJRT_Error{absl::InvalidArgumentError(
-        "PJRT FFI extension requires execute context to be not nullptr")};
+    return StatusToPjRtError(absl::InvalidArgumentError(
+        "PJRT FFI extension requires execute context to be not nullptr"));
   }
 
   xla::ffi::TypeRegistry::TypeId type_id(args->user_data.type_id);
@@ -83,8 +83,8 @@ static PJRT_Error* PJRT_FFI_Register_Handler(
 
   // Validate that handler is not null
   if (args->handler == nullptr) {
-    return new PJRT_Error{
-        absl::InvalidArgumentError("FFI handler cannot be null")};
+    return StatusToPjRtError(
+        absl::InvalidArgumentError("FFI handler cannot be null"));
   }
 
   // Only support typed FFI handlers
